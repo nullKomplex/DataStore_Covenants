@@ -1,0 +1,13 @@
+## Interface: 90002
+## Title: DataStore_Covenants
+## Notes: Stores information about covenants, including renown, callings, and conduits. 
+## Author: Teelo
+## Version: @project-version@
+## Dependencies: DataStore
+## OptionalDeps: Ace3
+## SavedVariables: DataStore_CovenantsDB
+## X-Category: Interface Enhancements
+## X-Embeds: Ace3
+## X-Curse-Project-ID: 423614
+
+DataStore_Covenants.lua
