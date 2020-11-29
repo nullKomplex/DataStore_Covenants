@@ -1,0 +1,8 @@
+package-as: DataStore_Covenants
+
+move-folders:
+ DataStore_Covenants/DataStore_Covenants: DataStore_Covenants
+
+ignore:
+ - LICENCE.md
+ - README.md
