@@ -32,7 +32,6 @@ local AddonDB_Defaults = {
 
 -- *** Utility functions ***
 
-
 -- *** Scanning functions ***
 local function ScanRenown()
     addon.ThisCharacter.RenownLevel = C_CovenantSanctumUI.GetRenownLevel()
