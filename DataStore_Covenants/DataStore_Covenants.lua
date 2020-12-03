@@ -24,6 +24,12 @@ local AddonDB_Defaults = {
                 RenownLevel = 0,
                 CovenantID = 0,
                 ActiveSoulbindID = 0,
+                SanctumFeatureUnlocked = false, -- Eg: Queen's Conservatory for Night Fae
+                GardenData = {  -- as returned by C_ArdenwealdGardening.GetGardenData
+                    active = 0,
+                    ready = 0,
+                    remainingSeconds = 0,
+                }
 			}
 		}
 	}
@@ -41,6 +47,11 @@ end
 local function ScanCovenant()
     addon.ThisCharacter.CovenantID = C_Covenants.GetActiveCovenantID()
     addon.ThisCharacter.ActiveSoulbindID = C_Soulbinds.GetActiveSoulbindID()
+    if addon.ThisCharacter.CovenantID == 3 then
+        addon.ThisCharacter.SanctumFeatureUnlocked = C_ArdenwealdGardening.IsGardenAccessible()
+        addon.ThisCharacter.GardenData = C_ArdenwealdGardening.GetGardenData()
+    end
+    addon.ThisCharacter.lastUpdate = time()
 end
 	
 -- *** Event Handlers ***
@@ -70,12 +81,32 @@ local function _GetActiveSoulbindID(character)
     return character.ActiveSoulbindID
 end
 
+local function _IsArdenwealdGardenAccessible(character)
+    return (character.CovenantID == 3) and character.SanctumFeatureUnlocked
+end
+
+local function _GetArdenwealdGardenData(character)
+    -- Update remaining seconds first
+    local data = addon.ThisCharacter.GardenData
+    local lastUpdate = addon.ThisCharacter.lastUpdate
+    if data and type(data) == "table" then
+        data.remainingSeconds = lastUpdate + data.remainingSeconds - time()
+        if data.remainingSeconds < 0 then
+            data.remainingSeconds = 0
+        end
+    end
+    
+    return data
+end
+
 -- ** Setup **
 
 local PublicMethods = {
     GetRenownLevel = _GetRenownLevel,
     GetCovenantID = _GetCovenantID,
     GetActiveSoulbindID = _GetActiveSoulbindID,
+    IsArdenwealdGardenAccessible = _IsArdenwealdGardenAccessible,
+    GetArdenwealdGardenData = _GetArdenwealdGardenData,
 }
 
 function addon:OnInitialize()
@@ -85,6 +116,8 @@ function addon:OnInitialize()
     DataStore:SetCharacterBasedMethod("GetRenownLevel")
     DataStore:SetCharacterBasedMethod("GetCovenantID")
     DataStore:SetCharacterBasedMethod("GetActiveSoulbindID")
+    DataStore:SetCharacterBasedMethod("IsArdenwealdGardenAccessible")
+    DataStore:SetCharacterBasedMethod("GetArdenwealdGardenData")
 end
 
 function addon:OnEnable()	
