@@ -29,7 +29,33 @@ local AddonDB_Defaults = {
                     active = 0,
                     ready = 0,
                     remainingSeconds = 0,
-                }
+                },
+                ConduitNodes = {
+                    ['*'] = { -- array index as returned by C_AnimaDiversion.GetAnimaDiversionNodes
+                        talentID = 0,
+                        name = nil,
+                        description = nil,
+                        costs = {
+                            currencyID = 0,
+                            quantity = 0,
+                        },
+                        currencyID = 0,
+                        icon = 0,
+                        normalizedPosition = {
+                            x = 0,
+                            y = 0,
+                        },
+                        state = 0, -- Enum.AnimaDiversionNodeState, 0-4
+                    }
+                },
+                ConduitReinforceProgress = 0,
+                ConduitOriginPosition = { -- as returned by C_AnimaDiversion.GetOriginPosition
+                    x = 0,
+                    y = 0,
+                },
+                TalentUnlockWorldQuest = { -- Warcraft. Text. File. is this?
+                    ['*'] = 0 -- key: talentID from ConduitNodes, value: worldQuestID as returned by C_Garrison.GetTalentUnlockWorldQuest
+                },
 			}
 		}
 	}
@@ -59,6 +85,24 @@ local function ScanGarden()
         wipe(addon.ThisCharacter.GardenData)
     end
 end
+
+local function ScanConduit()
+    local nodes = C_AnimaDiversion.GetAnimaDiversionNodes()
+    if nodes == nil then return end
+    for i, node in pairs(nodes) do
+        local x = node.normalizedPosition.x
+        local y = node.normalizedPosition.y
+        nodes[i].normalizedPosition = {["x"] = x, ["y"] = y} -- overwrite Vector2DMixin with just table containing the x,y
+        
+        addon.ThisCharacter.TalentUnlockWorldQuest[node.talentID] = C_Garrison.GetTalentUnlockWorldQuest(node.talentID)
+    end
+    addon.ThisCharacter.ConduitNodes = nodes
+    addon.ThisCharacter.ConduitReinforceProgress = C_AnimaDiversion.GetReinforceProgress()
+    local originPosition = C_AnimaDiversion.GetOriginPosition()
+    local x = originPosition.x
+    local y = originPosition.y
+    addon.ThisCharacter.ConduitOriginPosition = {["x"] = x, ["y"] = y} -- overwrite Vector2DMixin with just x,y
+end
 	
 -- *** Event Handlers ***
 local function OnRenownChanged()
@@ -76,6 +120,10 @@ end
 
 local function OnCovenantChosen()
     ScanCovenant()
+end
+
+local function OnConduitOpened()
+    ScanConduit()
 end
 
 -- ** Mixins **
@@ -109,6 +157,32 @@ local function _GetArdenwealdGardenData(character)
     return data
 end
 
+local function _GetAnimaDiversionNodes(character)
+    local nodes = character.ConduitNodes
+    for i, node in pairs(nodes) do
+        local x = node.normalizedPosition.x
+        local y = node.normalizedPosition.y
+        nodes[i].normalizedPosition = CreateVector2D(x, y)
+    end
+    
+    return nodes
+end
+
+local function _GetReinforceProgress(character)
+    return character.ConduitReinforceProgress
+end
+
+local function _GetConduitOriginPosition(character)
+    local originPosition = character.ConduitOriginPosition
+    local x = originPosition.x
+    local y = originPosition.y
+    return CreateVector2D(x, y)
+end
+
+local function _GetTalentUnlockWorldQuest(character, talentID)
+    return character.TalentUnlockWorldQuest[talentID]
+end
+
 -- ** Setup **
 
 local PublicMethods = {
@@ -117,6 +191,10 @@ local PublicMethods = {
     GetActiveSoulbindID = _GetActiveSoulbindID,
     IsArdenwealdGardenAccessible = _IsArdenwealdGardenAccessible,
     GetArdenwealdGardenData = _GetArdenwealdGardenData,
+    GetAnimaDiversionNodes = _GetAnimaDiversionNodes,
+    GetReinforceProgress = _GetReinforceProgress,
+    GetConduitOriginPosition = _GetConduitOriginPosition,
+    GetTalentUnlockWorldQuest = _GetTalentUnlockWorldQuest,
 }
 
 function addon:OnInitialize()
@@ -128,6 +206,10 @@ function addon:OnInitialize()
     DataStore:SetCharacterBasedMethod("GetActiveSoulbindID")
     DataStore:SetCharacterBasedMethod("IsArdenwealdGardenAccessible")
     DataStore:SetCharacterBasedMethod("GetArdenwealdGardenData")
+    DataStore:SetCharacterBasedMethod("GetAnimaDiversionNodes")
+    DataStore:SetCharacterBasedMethod("GetReinforceProgress")
+    DataStore:SetCharacterBasedMethod("GetConduitOriginPosition")
+    DataStore:SetCharacterBasedMethod("GetTalentUnlockWorldQuest")
 end
 
 function addon:OnEnable()	
@@ -135,6 +217,7 @@ function addon:OnEnable()
     addon:RegisterEvent("PLAYER_ENTERING_WORLD", OnEnterWorld)
     addon:RegisterEvent("COVENANT_CHOSEN", OnCovenantChosen)
     addon:RegisterEvent("SOULBIND_ACTIVATED", OnCovenantChosen)
+    addon:RegisterEvent("ANIMA_DIVERSION_OPEN", OnConduitOpened)
 end
 
 function addon:OnDisable()
@@ -142,4 +225,5 @@ function addon:OnDisable()
     addon:UnregisterEvent("PLAYER_ENTERING_WORLD")
     addon:UnregisterEvent("COVENANT_CHOSEN")
     addon:UnregisterEvent("SOULBIND_ACTIVATED")
+    addon:UnregisterEvent("ANIMA_DIVERSION_OPEN")
 end
