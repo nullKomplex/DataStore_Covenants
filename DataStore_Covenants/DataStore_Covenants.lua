@@ -97,8 +97,8 @@ end
 
 local function _GetArdenwealdGardenData(character)
     -- Update remaining seconds first
-    local data = addon.ThisCharacter.GardenData
-    local lastUpdate = addon.ThisCharacter.lastUpdate
+    local data = character.GardenData
+    local lastUpdate = character.lastUpdate
     if data and type(data) == "table" then
         data.remainingSeconds = lastUpdate + data.remainingSeconds - time()
         if data.remainingSeconds < 0 then
