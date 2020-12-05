@@ -47,11 +47,17 @@ end
 local function ScanCovenant()
     addon.ThisCharacter.CovenantID = C_Covenants.GetActiveCovenantID()
     addon.ThisCharacter.ActiveSoulbindID = C_Soulbinds.GetActiveSoulbindID()
+
+    addon.ThisCharacter.lastUpdate = time()
+end
+
+local function ScanGarden()
     if addon.ThisCharacter.CovenantID == 3 then
         addon.ThisCharacter.SanctumFeatureUnlocked = C_ArdenwealdGardening.IsGardenAccessible()
         addon.ThisCharacter.GardenData = C_ArdenwealdGardening.GetGardenData()
+    else
+        wipe(addon.ThisCharacter.GardenData)
     end
-    addon.ThisCharacter.lastUpdate = time()
 end
 	
 -- *** Event Handlers ***
@@ -59,9 +65,13 @@ local function OnRenownChanged()
     ScanRenown()
 end
 
-local function OnEnterWorld()
+local function OnEnterWorld(event, isInitial, isReload)
     ScanRenown()
     ScanCovenant()
+    -- incorrect garden data is loaded during first PLAYER_ENTERING_WORLD
+    if not isInitial then
+        ScanGarden()
+    end
 end
 
 local function OnCovenantChosen()
