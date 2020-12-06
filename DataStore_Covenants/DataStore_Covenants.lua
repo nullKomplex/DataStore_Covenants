@@ -56,6 +56,12 @@ local AddonDB_Defaults = {
                 TalentUnlockWorldQuest = { -- Warcraft. Text. File. is this?
                     ['*'] = 0 -- key: talentID from ConduitNodes, value: worldQuestID as returned by C_Garrison.GetTalentUnlockWorldQuest
                 },
+                AnimaCurrency = { -- as returned by C_CurrencyInfo.GetCurrencyInfo(1813)
+                    currencyID = 0,
+                    maxDisplayable = 0,
+                    count = 0,
+                    icon = 0,
+                },
 			}
 		}
 	}
@@ -96,12 +102,21 @@ local function ScanConduit()
         
         addon.ThisCharacter.TalentUnlockWorldQuest[node.talentID] = C_Garrison.GetTalentUnlockWorldQuest(node.talentID)
     end
+    
     addon.ThisCharacter.ConduitNodes = nodes
     addon.ThisCharacter.ConduitReinforceProgress = C_AnimaDiversion.GetReinforceProgress()
+    
     local originPosition = C_AnimaDiversion.GetOriginPosition()
     local x = originPosition.x
     local y = originPosition.y
     addon.ThisCharacter.ConduitOriginPosition = {["x"] = x, ["y"] = y} -- overwrite Vector2DMixin with just x,y
+    
+    local currencyID, maxDisplayable = C_CovenantSanctumUI.GetAnimaInfo()
+    local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
+    addon.ThisCharacter.AnimaCurrency.currencyID = currencyID
+    addon.ThisCharacter.AnimaCurrency.maxDisplayable = maxDisplayable
+    addon.ThisCharacter.AnimaCurrency.count = info.quantity
+    addon.ThisCharacter.AnimaCurrency.icon = info.iconFileID
 end
 	
 -- *** Event Handlers ***
@@ -172,7 +187,7 @@ local function _GetReinforceProgress(character)
     return character.ConduitReinforceProgress
 end
 
-local function _GetConduitOriginPosition(character)
+local function _GetAnimaDiversionOriginPosition(character)
     local originPosition = character.ConduitOriginPosition
     local x = originPosition.x
     local y = originPosition.y
@@ -181,6 +196,10 @@ end
 
 local function _GetTalentUnlockWorldQuest(character, talentID)
     return character.TalentUnlockWorldQuest[talentID]
+end
+
+local function _GetAnimaCurrencyInfo(character)
+    return character.AnimaCurrency
 end
 
 -- ** Setup **
@@ -193,8 +212,9 @@ local PublicMethods = {
     GetArdenwealdGardenData = _GetArdenwealdGardenData,
     GetAnimaDiversionNodes = _GetAnimaDiversionNodes,
     GetReinforceProgress = _GetReinforceProgress,
-    GetConduitOriginPosition = _GetConduitOriginPosition,
+    GetAnimaDiversionOriginPosition = _GetAnimaDiversionOriginPosition,
     GetTalentUnlockWorldQuest = _GetTalentUnlockWorldQuest,
+    GetAnimaCurrencyInfo = _GetAnimaCurrencyInfo,
 }
 
 function addon:OnInitialize()
@@ -208,8 +228,9 @@ function addon:OnInitialize()
     DataStore:SetCharacterBasedMethod("GetArdenwealdGardenData")
     DataStore:SetCharacterBasedMethod("GetAnimaDiversionNodes")
     DataStore:SetCharacterBasedMethod("GetReinforceProgress")
-    DataStore:SetCharacterBasedMethod("GetConduitOriginPosition")
+    DataStore:SetCharacterBasedMethod("GetAnimaDiversionOriginPosition")
     DataStore:SetCharacterBasedMethod("GetTalentUnlockWorldQuest")
+    DataStore:SetCharacterBasedMethod("GetAnimaCurrencyInfo")
 end
 
 function addon:OnEnable()	
