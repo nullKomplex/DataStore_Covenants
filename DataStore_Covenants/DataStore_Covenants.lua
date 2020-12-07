@@ -57,10 +57,10 @@ local AddonDB_Defaults = {
                     ['*'] = 0 -- key: talentID from ConduitNodes, value: worldQuestID as returned by C_Garrison.GetTalentUnlockWorldQuest
                 },
                 AnimaCurrency = { -- as returned by C_CurrencyInfo.GetCurrencyInfo(1813)
-                    currencyID = 0,
-                    maxDisplayable = 0,
+                    currencyID = 1813,
+                    maxDisplayable = 35000,
                     count = 0,
-                    icon = 0,
+                    icon = 3528288,
                 },
 			}
 		}
