@@ -62,6 +62,21 @@ local AddonDB_Defaults = {
                     count = 0,
                     icon = 3528288,
                 },
+                ConduitCollection = { -- as returned by C_Soulbinds.GetConduitCollection
+                    ['*'] = { -- conduitID
+                        conduitRank = 0,
+                        conduitItemLevel = 0,
+                        conduitType = 0,
+                        conduitSpecSetID = 0,
+                        conduitSpecIDs = {},
+                        conduitSpecName = nil,
+                        covenantID = 0,
+                        conduitItemID = 0,
+                    }
+                },
+                InstalledConduits = {
+                    ['*'] = 0 -- nodeID = conduitID
+                },
 			}
 		}
 	}
@@ -118,6 +133,24 @@ local function ScanConduit()
     addon.ThisCharacter.AnimaCurrency.count = info.quantity
     addon.ThisCharacter.AnimaCurrency.icon = info.iconFileID
 end
+
+local function ScanSoulbinds()
+    for i = 0, 3 do
+        local collectionData = C_Soulbinds.GetConduitCollection(i)
+        for _, data in pairs(collectionData) do
+            addon.ThisCharacter.ConduitCollection[data.conduitID] = data
+        end
+    end
+    
+    local data = C_Soulbinds.GetSoulbindData(C_Soulbinds.GetActiveSoulbindID())
+    local tree = data.tree
+    local nodes = tree.nodes
+    for _, node in pairs(nodes) do
+        local nodeID = node.ID
+        local conduitID = node.conduitID
+        addon.ThisCharacter.InstalledConduits[nodeID] = conduitID
+    end
+end
 	
 -- *** Event Handlers ***
 local function OnRenownChanged()
@@ -141,18 +174,25 @@ local function OnConduitOpened()
     ScanConduit()
 end
 
--- ** Mixins **
-local function _GetRenownLevel(character)
-    return character.RenownLevel
+local function OnSoulbindForgeOpened()
+    ScanSoulbinds()
 end
+
+-- ** Mixins **
+
+-- Generic
 
 local function _GetCovenantID(character)
     return character.CovenantID
 end
 
-local function _GetActiveSoulbindID(character)
-    return character.ActiveSoulbindID
+-- Renown
+
+local function _GetRenownLevel(character)
+    return character.RenownLevel
 end
+
+-- Sanctum Features
 
 local function _IsArdenwealdGardenAccessible(character)
     return (character.CovenantID == 3) and character.SanctumFeatureUnlocked
@@ -171,6 +211,8 @@ local function _GetArdenwealdGardenData(character)
     
     return data
 end
+
+-- Anima Diversion
 
 local function _GetAnimaDiversionNodes(character)
     local nodes = character.ConduitNodes
@@ -202,6 +244,20 @@ local function _GetAnimaCurrencyInfo(character)
     return character.AnimaCurrency
 end
 
+-- Soulbinds
+
+local function _GetActiveSoulbindID(character)
+    return character.ActiveSoulbindID
+end
+
+local function _GetConduitRankFromCollection(character, conduitID)
+    return character.ConduitCollection[conduitID].conduitRank
+end
+
+local function _GetInstalledConduitID(character, nodeID)
+    return character.InstalledConduits[nodeID]
+end
+
 -- ** Setup **
 
 local PublicMethods = {
@@ -215,6 +271,8 @@ local PublicMethods = {
     GetAnimaDiversionOriginPosition = _GetAnimaDiversionOriginPosition,
     GetTalentUnlockWorldQuest = _GetTalentUnlockWorldQuest,
     GetAnimaCurrencyInfo = _GetAnimaCurrencyInfo,
+    GetConduitRankFromCollection = _GetConduitRankFromCollection,
+    GetInstalledConduitID = _GetInstalledConduitID,
 }
 
 function addon:OnInitialize()
@@ -231,6 +289,8 @@ function addon:OnInitialize()
     DataStore:SetCharacterBasedMethod("GetAnimaDiversionOriginPosition")
     DataStore:SetCharacterBasedMethod("GetTalentUnlockWorldQuest")
     DataStore:SetCharacterBasedMethod("GetAnimaCurrencyInfo")
+    DataStore:SetCharacterBasedMethod("GetConduitRankFromCollection")
+    DataStore:SetCharacterBasedMethod("GetInstalledConduitID")
 end
 
 function addon:OnEnable()	
@@ -239,6 +299,7 @@ function addon:OnEnable()
     addon:RegisterEvent("COVENANT_CHOSEN", OnCovenantChosen)
     addon:RegisterEvent("SOULBIND_ACTIVATED", OnCovenantChosen)
     addon:RegisterEvent("ANIMA_DIVERSION_OPEN", OnConduitOpened)
+    addon:RegisterEvent("SOULBIND_FORGE_INTERACTION_STARTED", OnSoulbindForgeOpened)
 end
 
 function addon:OnDisable()
@@ -247,4 +308,5 @@ function addon:OnDisable()
     addon:UnregisterEvent("COVENANT_CHOSEN")
     addon:UnregisterEvent("SOULBIND_ACTIVATED")
     addon:UnregisterEvent("ANIMA_DIVERSION_OPEN")
+    addon:UnregisterEvent("SOULBIND_FORGE_INTERACTION_STARTED")    
 end
