@@ -77,6 +77,24 @@ local AddonDB_Defaults = {
                 InstalledConduits = {
                     ['*'] = 0 -- nodeID = conduitID
                 },
+                Torghast = {
+                    ['*'] = { -- Texture Kit Name, as written in CustomGossipFrameBase
+                        name = nil, -- Localised name as retrieved from C_GossipInfo.GetText()
+                        nextReset = 0, -- from C_DateAndTime.GetSecondsUntilWeeklyReset(). Do NOT reset this at the weekly, use this to know if the availability is from a previous week.
+                        levels = { -- all of this from C_GossipInfo.GetOptions()
+                            ['*'] = { -- level number, remember to cast this from string to number 
+                                status = 0, -- From Enum.GossipOptionStatus: 0 = Available, 1 = Unavailable, 2 = Locked, 3 = AlreadyComplete
+                                rewards = {
+                                    ['*'] = { -- indexed array
+                                        id = 0,
+                                        quantity = 0, -- includes rewards from lower layers
+                                        rewardType = 0,
+                                    }
+                                },
+                            }
+                        },
+                    }
+                },
 			}
 		}
 	}
@@ -151,6 +169,21 @@ local function ScanSoulbinds()
         addon.ThisCharacter.InstalledConduits[nodeID] = conduitID
     end
 end
+
+local function ScanTorghast(uiTextureKit)
+    local torghast = addon.ThisCharacter.Torghast[uiTextureKit]
+    torghast.name = C_GossipInfo.GetText()
+    torghast.nextReset = C_DateAndTime.GetSecondsUntilWeeklyReset() + time()
+    
+    local options = C_GossipInfo.GetOptions()
+    for i, option in pairs(options) do
+        torghast.levels[tonumber(option.name)] = {
+            ["status"] = option.status,
+            ["rewards"] = option.rewards,
+        }
+    end
+end
+
 	
 -- *** Event Handlers ***
 local function OnRenownChanged()
@@ -176,6 +209,18 @@ end
 
 local function OnSoulbindForgeOpened()
     ScanSoulbinds()
+end
+
+local function OnGossipShow(event, uiTextureKit)
+    -- Update this list from CustomGossipFrameBase.lua, in function CustomGossipManagerMixin:OnLoad()
+	local torghastTextureKits = {"skoldushall", "mortregar", "coldheartinterstitia", "fracturechambers", "soulforges", "theupperreaches", "twistingcorridors"}
+    
+    if not uiTextureKit then return end
+    for _, name in pairs(torghastTextureKits) do
+        if uiTextureKit == name then
+            ScanTorghast(uiTextureKit)
+        end
+    end
 end
 
 -- ** Mixins **
@@ -258,6 +303,12 @@ local function _GetInstalledConduitID(character, nodeID)
     return character.InstalledConduits[nodeID]
 end
 
+-- Torghast
+
+local function _GetTorghastData(character)
+    return character.Torghast
+end
+
 -- ** Setup **
 
 local PublicMethods = {
@@ -273,6 +324,7 @@ local PublicMethods = {
     GetAnimaCurrencyInfo = _GetAnimaCurrencyInfo,
     GetConduitRankFromCollection = _GetConduitRankFromCollection,
     GetInstalledConduitID = _GetInstalledConduitID,
+    GetTorghastData = _GetTorghastData,
 }
 
 function addon:OnInitialize()
@@ -291,6 +343,7 @@ function addon:OnInitialize()
     DataStore:SetCharacterBasedMethod("GetAnimaCurrencyInfo")
     DataStore:SetCharacterBasedMethod("GetConduitRankFromCollection")
     DataStore:SetCharacterBasedMethod("GetInstalledConduitID")
+    DataStore:SetCharacterBasedMethod("GetTorghastData")
 end
 
 function addon:OnEnable()	
@@ -300,6 +353,7 @@ function addon:OnEnable()
     addon:RegisterEvent("SOULBIND_ACTIVATED", OnCovenantChosen)
     addon:RegisterEvent("ANIMA_DIVERSION_OPEN", OnConduitOpened)
     addon:RegisterEvent("SOULBIND_FORGE_INTERACTION_STARTED", OnSoulbindForgeOpened)
+    addon:RegisterEvent("GOSSIP_SHOW", OnGossipShow)
 end
 
 function addon:OnDisable()
@@ -308,5 +362,6 @@ function addon:OnDisable()
     addon:UnregisterEvent("COVENANT_CHOSEN")
     addon:UnregisterEvent("SOULBIND_ACTIVATED")
     addon:UnregisterEvent("ANIMA_DIVERSION_OPEN")
-    addon:UnregisterEvent("SOULBIND_FORGE_INTERACTION_STARTED")    
+    addon:UnregisterEvent("SOULBIND_FORGE_INTERACTION_STARTED")
+    addon:UnregisterEvent("GOSSIP_SHOW")    
 end
