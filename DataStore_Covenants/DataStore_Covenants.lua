@@ -143,13 +143,6 @@ local function ScanConduit()
     local x = originPosition.x
     local y = originPosition.y
     addon.ThisCharacter.ConduitOriginPosition = {["x"] = x, ["y"] = y} -- overwrite Vector2DMixin with just x,y
-    
-    local currencyID, maxDisplayable = C_CovenantSanctumUI.GetAnimaInfo()
-    local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
-    addon.ThisCharacter.AnimaCurrency.currencyID = currencyID
-    addon.ThisCharacter.AnimaCurrency.maxDisplayable = maxDisplayable
-    addon.ThisCharacter.AnimaCurrency.count = info.quantity
-    addon.ThisCharacter.AnimaCurrency.icon = info.iconFileID
 end
 
 local function ScanSoulbinds()
@@ -184,6 +177,16 @@ local function ScanTorghast(uiTextureKit)
     end
 end
 
+local function ScanAnima()
+    local currencyID, maxDisplayable = C_CovenantSanctumUI.GetAnimaInfo()
+    local info = C_CurrencyInfo.GetCurrencyInfo(currencyID)
+    
+    addon.ThisCharacter.AnimaCurrency.currencyID = currencyID
+    addon.ThisCharacter.AnimaCurrency.maxDisplayable = maxDisplayable
+    addon.ThisCharacter.AnimaCurrency.count = info.quantity
+    addon.ThisCharacter.AnimaCurrency.icon = info.iconFileID
+end
+
 	
 -- *** Event Handlers ***
 local function OnRenownChanged()
@@ -193,6 +196,7 @@ end
 local function OnEnterWorld(event, isInitial, isReload)
     ScanRenown()
     ScanCovenant()
+    ScanAnima()
     -- incorrect garden data is loaded during first PLAYER_ENTERING_WORLD
     if not isInitial then
         ScanGarden()
@@ -221,6 +225,10 @@ local function OnGossipShow(event, uiTextureKit)
             ScanTorghast(uiTextureKit)
         end
     end
+end
+
+local function OnCurrencyDisplayUpdate()
+    ScanAnima()
 end
 
 -- ** Mixins **
@@ -261,13 +269,14 @@ end
 
 local function _GetAnimaDiversionNodes(character)
     local nodes = character.ConduitNodes
+    local replacementNodes = CopyTable(nodes)
     for i, node in pairs(nodes) do
         local x = node.normalizedPosition.x
         local y = node.normalizedPosition.y
-        nodes[i].normalizedPosition = CreateVector2D(x, y)
+        replacementNodes[i].normalizedPosition = CreateVector2D(x, y)
     end
     
-    return nodes
+    return replacementNodes
 end
 
 local function _GetReinforceProgress(character)
@@ -354,6 +363,7 @@ function addon:OnEnable()
     addon:RegisterEvent("ANIMA_DIVERSION_OPEN", OnConduitOpened)
     addon:RegisterEvent("SOULBIND_FORGE_INTERACTION_STARTED", OnSoulbindForgeOpened)
     addon:RegisterEvent("GOSSIP_SHOW", OnGossipShow)
+	addon:RegisterEvent("CURRENCY_DISPLAY_UPDATE", OnCurrencyDisplayUpdate)
 end
 
 function addon:OnDisable()
@@ -363,5 +373,6 @@ function addon:OnDisable()
     addon:UnregisterEvent("SOULBIND_ACTIVATED")
     addon:UnregisterEvent("ANIMA_DIVERSION_OPEN")
     addon:UnregisterEvent("SOULBIND_FORGE_INTERACTION_STARTED")
-    addon:UnregisterEvent("GOSSIP_SHOW")    
+    addon:UnregisterEvent("GOSSIP_SHOW")
+	addon:UnregisterEvent("CURRENCY_DISPLAY_UPDATE")    
 end
